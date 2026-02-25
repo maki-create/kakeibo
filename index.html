@@ -195,7 +195,6 @@
             </h2>
           </div>
           <div class="p-5">
-            <!-- ★修正：横並びを完全に廃止し、全ての項目が同じ幅になるようにしました -->
             <form onsubmit="submitManual(event)" class="space-y-4">
               <div>
                 <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
@@ -326,7 +325,7 @@
     // ==========================================
     // API通信用設定（★ここにGASのURLを貼る）
     // ==========================================
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyhsCzSsQ3TQZNqUO_QRgl8kehj64u2vhuhfAVgf5rzY0Uy7Uw2j8fu7Qm3ZhP0GZYRfA/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxiw2An9zGShvooxk6d_SLZUo0mAcx4rmoeTnSclXTQEshaAQC_-0ycq5sXhYtbu58L6Q/exec';
 
     // 共通のAPI呼び出し関数
     async function fetchAPI(action, payload = {}) {
@@ -367,8 +366,8 @@
       }
     }
 
-    // --- UI Update Functions （変更なし・省略せずにそのまま残す）---
-    function updateSpendChartUI(data) { /* 現在のコードのまま */ 
+    // --- UI Update Functions
+    function updateSpendChartUI(data) { 
       if(!data) return;
       document.getElementById('chart-total-spend').innerText = '¥ ' + data.totalSpend.toLocaleString();
       document.getElementById('chart-savings-text').innerText = '貯蓄: ¥ ' + data.savings.toLocaleString();
@@ -384,7 +383,7 @@
       });
     }
 
-    function updateAssetChartUI(data) { /* 現在のコードのまま */ 
+    function updateAssetChartUI(data) { 
       if(!data) return;
       document.getElementById('chart-total-asset').innerText = '¥ ' + data.totalAsset.toLocaleString();
       const labels = data.items.map(i => i.name);
@@ -406,7 +405,7 @@
 
     function storeTimelineData(data) { globalTimeline = data || []; }
 
-    function updateBudgets(data) { /* 現在のコードのまま */ 
+    function updateBudgets(data) { 
       const container = document.getElementById('budget-list');
       if (!data || data.length === 0) return;
       let html = '<div class="space-y-3">';
@@ -421,7 +420,7 @@
       container.innerHTML = html;
     }
 
-    function toggleDetails(index, categoryName) { /* 現在のコードのまま */ 
+    function toggleDetails(index, categoryName) { 
       const detailsDiv = document.getElementById(`details-${index}`);
       const icon = document.getElementById(`icon-${index}`);
       if (!detailsDiv.classList.contains('hidden')) { detailsDiv.classList.add('hidden'); icon.classList.remove('rotate-180'); return; }
@@ -437,13 +436,13 @@
       }
     }
 
-    function initSelect(id, items) { /* 現在のコードのまま */ 
+    function initSelect(id, items) { 
       const select = document.getElementById(id);
       select.innerHTML = '<option value="">選択してください</option>';
       items.forEach(item => { select.innerHTML += `<option value="${item}">${item}</option>`; });
     }
 
-    function updateIncompleteForms(data) { /* 現在のコードのまま */ 
+    function updateIncompleteForms(data) { 
       const container = document.getElementById('incomplete-container');
       const badge = document.getElementById('badge-incomplete');
       badge.innerText = data ? data.length : 0;
@@ -459,7 +458,7 @@
 
     function showError(error) { alert("通信エラー:\n" + (error.message || error)); }
 
-    // ★ 自動記録送信処理の書き換え
+    // ★ 自動記録送信処理
     async function submitIncomplete(rowNum) {
       const item = document.getElementById(`inc-item-${rowNum}`).value;
       const memo = document.getElementById(`inc-memo-${rowNum}`).value;
@@ -481,7 +480,7 @@
       }
     }
 
-    // ★ 手入力送信処理の書き換え
+    // ★ 手入力送信処理
     async function submitManual(e) {
       e.preventDefault();
       const date = document.getElementById('input-date').value;
@@ -510,3 +509,6 @@
         btn.disabled = false;
       }
     }
+  </script>
+</body>
+</html>
