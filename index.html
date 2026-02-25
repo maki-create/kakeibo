@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Household Budget App</title>
   
+  <!-- PWA化のための設定 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="apple-touch-icon" href="お茶碗と箸.png">
+  
   <!-- CSS Framework: Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -73,13 +78,29 @@
       padding-top: 10px;
       padding-bottom: max(10px, env(safe-area-inset-bottom));
     }
+
+    /* Loading Spinner */
+    .spinner {
+      border: 2px solid #e7e5e4;
+      border-top: 2px solid #0f766e;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="antialiased selection:bg-teal-100">
 
   <!-- Header -->
-  <header class="bg-white/90 backdrop-blur-md shadow-sm border-b border-stone-200 p-4 fixed top-0 w-full z-20 flex justify-center items-center h-14">
+  <header class="bg-white/90 backdrop-blur-md shadow-sm border-b border-stone-200 p-4 fixed top-0 w-full z-20 flex justify-between items-center h-14">
+    <div class="w-8"></div><!-- spacer -->
     <h1 class="text-lg font-bold text-stone-800 tracking-tight" id="header-title">ホーム</h1>
+    <div class="w-8 flex justify-end">
+      <!-- 同期中を示すスピナー（初期状態は隠す） -->
+      <div id="sync-indicator" class="spinner hidden" title="データ同期中..."></div>
+    </div>
   </header>
 
   <main class="mt-14 container mx-auto max-w-md relative">
@@ -262,34 +283,6 @@
     const SAVINGS_COLOR = '#3b82f6';
     const ASSET_COLORS = ['#0f766e', '#059669', '#2563eb', '#7c3aed'];
 
-    // --- MOCK DATA FOR PREVIEW ---
-    const MOCK_DATA = {
-      spendBreakdown: {
-        totalSpend: 135000, savings: 65000,
-        items: [
-          { name: "食費", amount: 12000 }, { name: "外食費", amount: 18000 },
-          { name: "交際費", amount: 15000 }, { name: "被服・美容", amount: 10000 },
-          { name: "固定費", amount: 50000 }
-        ]
-      },
-      assets: {
-        totalAsset: 3800000,
-        items: [ { name: "三井住友銀行", amount: 1500000 }, { name: "積立ＮＩＳＡ", amount: 1200000 } ]
-      },
-      budgets: [
-        { name: "食費", budget: 40000, current: 30000 },
-        { name: "交際費", budget: 20000, current: 15000 },
-        { name: "被服・美容", budget: 10000, current: 10000 }
-      ],
-      timeline: [
-        { date: "2/23", category: "支出・Paypay", item: "食費", amount: 3450, app: "Paypay", memo: "スーパー" },
-        { date: "2/21", category: "支出・現金", item: "交際費", amount: 1200, app: "現金", memo: "友人Aとランチ" },
-        { date: "2/20", category: "支出・カード", item: "食費", amount: 800, app: "カード", memo: "コンビニ" }
-      ],
-      incomplete: [ { rowNum: 20, date: "2/23", amount: 1200 } ],
-      items: ["食費", "外食費", "娯楽", "医療費", "交通費", "日用品費", "交際費", "被服・美容", "固定費", "その他"]
-    };
-
     // --- Tab & Panel Switching ---
     function switchTab(tabName) {
       document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
@@ -323,9 +316,9 @@
 
     // --- Initialization ---
     // ==========================================
-    // API通信用設定（★ここにGASのURLを貼る）
+    // API通信用設定
     // ==========================================
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxiw2An9zGShvooxk6d_SLZUo0mAcx4rmoeTnSclXTQEshaAQC_-0ycq5sXhYtbu58L6Q/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyhsCzSsQ3TQZNqUO_QRgl8kehj64u2vhuhfAVgf5rzY0Uy7Uw2j8fu7Qm3ZhP0GZYRfA/exec';
 
     // 共通のAPI呼び出し関数
     async function fetchAPI(action, payload = {}) {
@@ -348,22 +341,49 @@
       loadAllData();
     };
 
-    // ★データを一括で読み込む（爆速化）
+    // ★データを一括で読み込む（キャッシュ活用で爆速化）
     async function loadAllData() {
+      // 1. ローカルストレージ（スマホ本体）から前回のデータを取得して即座に表示
+      const cachedData = localStorage.getItem('kakeibo_data_cache');
+      if (cachedData) {
+        try {
+          renderData(JSON.parse(cachedData));
+        } catch (e) { console.error('Cache parsing error', e); }
+      }
+
+      // ヘッダーに同期中くるくるスピナーを表示
+      const syncIndicator = document.getElementById('sync-indicator');
+      syncIndicator.classList.remove('hidden');
+
+      // 2. 裏側でGASに最新データを取りに行く
       try {
         const data = await fetchAPI('getAllData');
         
-        updateSpendChartUI(data.spend);
-        updateAssetChartUI(data.asset);
-        storeTimelineData(data.timeline);
-        updateBudgets(data.budgets);
+        // 3. 取得した最新データで画面を上書きし、次回のためにスマホに保存（キャッシュ更新）
+        renderData(data);
+        localStorage.setItem('kakeibo_data_cache', JSON.stringify(data));
         
-        globalItems = data.items;
-        initSelect('input-item', data.items);
-        updateIncompleteForms(data.incomplete);
       } catch (error) {
-        showError(error);
+        if (!cachedData) {
+          // キャッシュすらない初回起動時のみ、エラーメッセージを出す
+          showError(error);
+        }
+      } finally {
+        // 同期完了したらスピナーを隠す
+        syncIndicator.classList.add('hidden');
       }
+    }
+
+    // 画面の描画処理をまとめた関数
+    function renderData(data) {
+      updateSpendChartUI(data.spend);
+      updateAssetChartUI(data.asset);
+      storeTimelineData(data.timeline);
+      updateBudgets(data.budgets);
+      
+      globalItems = data.items;
+      initSelect('input-item', data.items);
+      updateIncompleteForms(data.incomplete);
     }
 
     // --- UI Update Functions
@@ -508,6 +528,21 @@
         btn.innerHTML = originalText;
         btn.disabled = false;
       }
+    }
+    
+    // ==========================================
+    // PWA Service Worker の登録
+    // ==========================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((registration) => {
+            console.log('ServiceWorker 登録成功:', registration.scope);
+          })
+          .catch((error) => {
+            console.log('ServiceWorker 登録失敗:', error);
+          });
+      });
     }
   </script>
 </body>
