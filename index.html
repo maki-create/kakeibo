@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Household Budget App</title>
+  
+  <!-- CSS Framework: Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js for Donut Chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      background-color: #f5f5f4; /* stone-100 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #44403c; /* stone-700 */
+    }
+    
+    /* Navigation Active State */
+    .nav-item.active {
+      color: #0f766e; /* teal-700 */
+    }
+    .nav-item.active svg {
+      stroke-width: 2.5px;
+    }
+
+    /* Subtab Active State */
+    .subtab.active {
+      background-color: #ffffff;
+      color: #1c1917; /* stone-900 */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-weight: 700;
+    }
+    .subtab {
+      color: #78716c; /* stone-500 */
+      font-weight: 500;
+    }
+
+    /* Chart Container */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 240px;
+      margin: 0 auto;
+    }
+
+    /* Hide scrollbar */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* View transitions */
+    .view {
+      display: none;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .view.active { display: block; }
+    
+    .panel {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .panel.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Bottom Nav Padding */
+    .nav-bar {
+      padding-top: 10px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-teal-100">
+
+  <!-- Header -->
+  <header class="bg-white/90 backdrop-blur-md shadow-sm border-b border-stone-200 p-4 fixed top-0 w-full z-20 flex justify-center items-center h-14">
+    <h1 class="text-lg font-bold text-stone-800 tracking-tight" id="header-title">ホーム</h1>
+  </header>
+
+  <main class="mt-14 container mx-auto max-w-md relative">
+
+    <!-- ==============================
+         VIEW 1: HOME (DASHBOARD)
+         ============================== -->
+    <div id="view-home" class="view active px-4 pt-4 pb-40 space-y-5">
+      
+      <!-- Subtabs for Home -->
+      <div class="bg-stone-200/80 p-1 rounded-xl flex gap-1 shadow-inner">
+        <button id="subtab-spend" class="subtab active flex-1 py-2 text-sm rounded-lg transition-all" onclick="switchHomePanel('spend')">
+          支出状況
+        </button>
+        <button id="subtab-asset" class="subtab flex-1 py-2 text-sm rounded-lg transition-all" onclick="switchHomePanel('asset')">
+          資産状況
+        </button>
+      </div>
+
+      <!-- PANEL A: SPEND (支出状況) -->
+      <div id="panel-spend" class="panel active space-y-6">
+        
+        <!-- Detailed Donut Chart Section -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-stone-200">
+          <div class="flex justify-between items-end mb-3">
+            <h2 class="text-stone-800 font-bold">支出の内訳と貯蓄</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="spendChart"></canvas>
+            <!-- Center Text inside Donut -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
+              <span class="text-xs font-bold text-stone-400 mb-0.5">現在の総支出</span>
+              <span class="text-3xl font-bold text-stone-800 tracking-tight" id="chart-total-spend">¥---</span>
+              <span class="text-xs font-bold text-blue-600 mt-1 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100" id="chart-savings-text">貯蓄: ¥---</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Category Budgets Section (Accordion Style) -->
+        <section>
+          <div class="flex justify-between items-end mb-3 px-1">
+            <h2 class="text-stone-800 font-bold">項目別 予算消化</h2>
+          </div>
+          <div id="budget-list">
+            <!-- JSでアコーディオン形式のカードが生成されます -->
+            <p class="text-center text-stone-400 text-sm py-4">データを読み込んでいます...</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- PANEL B: ASSET (資産状況) -->
+      <div id="panel-asset" class="panel space-y-5">
+        
+        <!-- Asset Donut Chart Section -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-stone-200">
+          <div class="flex justify-between items-end mb-4">
+            <h2 class="text-stone-800 font-bold">総資産の内訳</h2>
+          </div>
+          <div class="chart-container mb-2">
+            <canvas id="assetChart"></canvas>
+            <!-- Center Text inside Donut -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
+              <span class="text-xs font-bold text-stone-400 mb-0.5">現在の総資産</span>
+              <span class="text-3xl font-bold text-stone-800 tracking-tight" id="chart-total-asset">¥---</span>
+            </div>
+          </div>
+          
+          <!-- Asset Details List -->
+          <div id="asset-list" class="space-y-3 mt-6 border-t border-stone-100 pt-5 px-1">
+            <p class="text-center text-stone-400 text-sm py-4">データを読み込んでいます...</p>
+          </div>
+        </section>
+        
+      </div>
+    </div>
+
+    <!-- ==============================
+         VIEW 2: INPUT (ADD)
+         ============================== -->
+    <div id="view-add" class="view px-4 pt-4 pb-40 space-y-5">
+      
+      <!-- 入力画面のサブタブ -->
+      <div class="bg-stone-200/80 p-1 rounded-xl flex gap-1 shadow-inner">
+        <button id="subtab-auto" class="subtab active flex-1 py-2 text-sm rounded-lg transition-all" onclick="switchAddPanel('auto')">
+          カードの確認
+        </button>
+        <button id="subtab-manual" class="subtab flex-1 py-2 text-sm rounded-lg transition-all" onclick="switchAddPanel('manual')">
+          新規手入力
+        </button>
+      </div>
+
+      <!-- PANEL C: AUTO INPUT (カードの補完) -->
+      <div id="panel-auto" class="panel active space-y-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+          <div class="bg-red-50 p-4 border-b border-red-100 flex justify-between items-center">
+            <h2 class="text-red-800 font-bold flex items-center gap-2">
+              <span class="text-lg">💳</span> 自動記録の確認
+            </h2>
+            <span class="text-xs bg-white text-red-500 px-2 py-1 rounded-full font-bold shadow-sm border border-red-200" id="badge-incomplete">0</span>
+          </div>
+          <div id="incomplete-container" class="p-4 space-y-4 bg-stone-50/50">
+            <p class="text-stone-400 text-sm text-center py-2">未確認のデータはありません</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- PANEL D: MANUAL INPUT (完全手入力) -->
+      <div id="panel-manual" class="panel space-y-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+          <div class="bg-teal-50 p-4 border-b border-teal-100">
+            <h2 class="text-teal-800 font-bold flex items-center gap-2">
+              <span class="text-lg">✏️</span> 手入力 (PayPay等)
+            </h2>
+          </div>
+          <div class="p-5">
+            <!-- ★修正：横並びを完全に廃止し、全ての項目が同じ幅になるようにしました -->
+            <form onsubmit="submitManual(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
+                <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
+                <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">項目</label>
+                <select id="input-item" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                  <option value="">読込中...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">支払方法</label>
+                <select id="input-app" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                  <option value="支出・Paypayクレジット">Paypayクレジット</option>
+                  <option value="支出・現金">現金</option>
+                  <option value="支出・デビット">デビット</option>
+                  <option value="支出・Paypay">Paypay</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">メモ (任意)</label>
+                <input type="text" id="input-memo" placeholder="詳細を入力..." class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+              </div>
+              <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-95 mt-2">
+                追加する
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bg-white/95 backdrop-blur border-t border-stone-200 fixed bottom-0 w-full flex justify-around items-center z-30 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] nav-bar">
+    <button onclick="switchTab('home')" id="tab-home" class="nav-item tab-active flex flex-col items-center justify-center w-1/2 py-1 gap-1 text-teal-700 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+      <span class="text-[10px] font-medium">ホーム</span>
+    </button>
+    <button onclick="switchTab('add')" id="tab-add" class="nav-item flex flex-col items-center justify-center w-1/2 py-1 gap-1 text-stone-400 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+      <span class="text-[10px] font-medium">入力</span>
+    </button>
+  </nav>
+
+  <!-- Application Logic -->
+  <script>
+    let globalItems = [];
+    let globalTimeline = []; 
+    let spendChartInstance = null;
+    let assetChartInstance = null;
+
+    // --- Color Palettes ---
+    const SPEND_COLORS = [
+      '#f87171', '#fb923c', '#fbbf24', '#facc15', '#a3e635', 
+      '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#94a3b8'
+    ];
+    const SAVINGS_COLOR = '#3b82f6';
+    const ASSET_COLORS = ['#0f766e', '#059669', '#2563eb', '#7c3aed'];
+
+    // --- MOCK DATA FOR PREVIEW ---
+    const MOCK_DATA = {
+      spendBreakdown: {
+        totalSpend: 135000, savings: 65000,
+        items: [
+          { name: "食費", amount: 12000 }, { name: "外食費", amount: 18000 },
+          { name: "交際費", amount: 15000 }, { name: "被服・美容", amount: 10000 },
+          { name: "固定費", amount: 50000 }
+        ]
+      },
+      assets: {
+        totalAsset: 3800000,
+        items: [ { name: "三井住友銀行", amount: 1500000 }, { name: "積立ＮＩＳＡ", amount: 1200000 } ]
+      },
+      budgets: [
+        { name: "食費", budget: 40000, current: 30000 },
+        { name: "交際費", budget: 20000, current: 15000 },
+        { name: "被服・美容", budget: 10000, current: 10000 }
+      ],
+      timeline: [
+        { date: "2/23", category: "支出・Paypay", item: "食費", amount: 3450, app: "Paypay", memo: "スーパー" },
+        { date: "2/21", category: "支出・現金", item: "交際費", amount: 1200, app: "現金", memo: "友人Aとランチ" },
+        { date: "2/20", category: "支出・カード", item: "食費", amount: 800, app: "カード", memo: "コンビニ" }
+      ],
+      incomplete: [ { rowNum: 20, date: "2/23", amount: 1200 } ],
+      items: ["食費", "外食費", "娯楽", "医療費", "交通費", "日用品費", "交際費", "被服・美容", "固定費", "その他"]
+    };
+
+    // --- Tab & Panel Switching ---
+    function switchTab(tabName) {
+      document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('active', 'tab-active', 'text-teal-700');
+        btn.classList.add('text-stone-400');
+      });
+
+      document.getElementById('view-' + tabName).classList.add('active');
+      const activeBtn = document.getElementById('tab-' + tabName);
+      activeBtn.classList.remove('text-stone-400');
+      activeBtn.classList.add('active', 'text-teal-700');
+
+      const titles = { 'home': 'ホーム', 'add': '支出の入力' };
+      document.getElementById('header-title').innerText = titles[tabName];
+    }
+
+    function switchHomePanel(panelName) {
+      document.querySelectorAll('#view-home .panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('#view-home .subtab').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-' + panelName).classList.add('active');
+      document.getElementById('subtab-' + panelName).classList.add('active');
+    }
+
+    function switchAddPanel(panelName) {
+      document.querySelectorAll('#view-add .panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('#view-add .subtab').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-' + panelName).classList.add('active');
+      document.getElementById('subtab-' + panelName).classList.add('active');
+    }
+
+    // --- Initialization ---
+    // ==========================================
+    // API通信用設定（★ここにGASのURLを貼る）
+    // ==========================================
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzeQ2JnGmqBpmsPvYKbmnnccgYVo5zCCz0TQZfi7Wg433FOM6rfxeOyTwMeVK9Uh7QPEg/exec';
+
+    // 共通のAPI呼び出し関数
+    async function fetchAPI(action, payload = {}) {
+      const res = await fetch(GAS_WEB_APP_URL, {
+        method: 'POST',
+        redirect: 'follow', // GASの仕様上必須
+        headers: {
+          'Content-Type': 'text/plain', // CORSエラー回避のおまじない
+        },
+        body: JSON.stringify({ action: action, ...payload })
+      });
+      const json = await res.json();
+      if (json.status === 'error') throw new Error(json.message);
+      return json.data;
+    }
+
+    // --- Initialization ---
+    window.onload = function() {
+      document.getElementById('input-date').valueAsDate = new Date();
+      loadAllData();
+    };
+
+    // ★データを一括で読み込む（爆速化）
+    async function loadAllData() {
+      try {
+        const data = await fetchAPI('getAllData');
+        
+        updateSpendChartUI(data.spend);
+        updateAssetChartUI(data.asset);
+        storeTimelineData(data.timeline);
+        updateBudgets(data.budgets);
+        
+        globalItems = data.items;
+        initSelect('input-item', data.items);
+        updateIncompleteForms(data.incomplete);
+      } catch (error) {
+        showError(error);
+      }
+    }
+
+    // --- UI Update Functions （変更なし・省略せずにそのまま残す）---
+    function updateSpendChartUI(data) { /* 現在のコードのまま */ 
+      if(!data) return;
+      document.getElementById('chart-total-spend').innerText = '¥ ' + data.totalSpend.toLocaleString();
+      document.getElementById('chart-savings-text').innerText = '貯蓄: ¥ ' + data.savings.toLocaleString();
+      const labels = data.items.map(i => i.name).concat(['貯蓄']);
+      const amounts = data.items.map(i => i.amount).concat([data.savings]);
+      const colors = SPEND_COLORS.slice(0, data.items.length).concat([SAVINGS_COLOR]);
+      if (spendChartInstance) spendChartInstance.destroy();
+      const ctx = document.getElementById('spendChart').getContext('2d');
+      spendChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: amounts, backgroundColor: colors, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }] },
+        options: { cutout: '72%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ' ' + context.label + ': ¥' + context.raw.toLocaleString(); } } } } }
+      });
+    }
+
+    function updateAssetChartUI(data) { /* 現在のコードのまま */ 
+      if(!data) return;
+      document.getElementById('chart-total-asset').innerText = '¥ ' + data.totalAsset.toLocaleString();
+      const labels = data.items.map(i => i.name);
+      const amounts = data.items.map(i => i.amount);
+      if (assetChartInstance) assetChartInstance.destroy();
+      const ctx = document.getElementById('assetChart').getContext('2d');
+      assetChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: amounts, backgroundColor: ASSET_COLORS, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }] },
+        options: { cutout: '72%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ' ' + context.label + ': ¥' + context.raw.toLocaleString(); } } } } }
+      });
+      let html = '';
+      data.items.forEach((item, i) => {
+        let color = ASSET_COLORS[i % ASSET_COLORS.length];
+        html += `<div class="flex justify-between items-center text-sm mb-1.5"><div class="flex items-center gap-2"><span class="w-3.5 h-3.5 rounded-full shadow-sm" style="background-color: ${color}"></span><span class="text-stone-600 font-bold">${item.name}</span></div><span class="font-bold text-stone-800 text-base tracking-tight">¥ ${item.amount.toLocaleString()}</span></div>`;
+      });
+      document.getElementById('asset-list').innerHTML = html;
+    }
+
+    function storeTimelineData(data) { globalTimeline = data || []; }
+
+    function updateBudgets(data) { /* 現在のコードのまま */ 
+      const container = document.getElementById('budget-list');
+      if (!data || data.length === 0) return;
+      let html = '<div class="space-y-3">';
+      data.forEach((item, index) => {
+        let pct = item.budget > 0 ? Math.floor((item.current / item.budget) * 100) : (item.current > 0 ? 100 : 0);
+        let isOver = item.current > item.budget;
+        let colorClass = isOver ? 'bg-red-500' : 'bg-teal-500';
+        let remainingText = isOver ? `<span class="text-red-500 font-bold">¥${(item.current - item.budget).toLocaleString()} オーバー</span>` : `残り ¥${(item.budget - item.current).toLocaleString()}`;
+        html += `<div class="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden transition-all duration-300"><div class="p-4 cursor-pointer active:bg-stone-50 select-none" onclick="toggleDetails(${index}, '${item.name}')"><div class="flex justify-between items-baseline mb-2"><h2 class="font-bold text-stone-800">${item.name}</h2><span class="text-xs text-stone-500 font-medium">${remainingText}</span></div><div class="w-full bg-stone-100 rounded-full h-2.5 mb-2 overflow-hidden"><div class="${colorClass} h-2.5 rounded-full transition-all duration-1000" style="width: ${Math.min(pct, 100)}%"></div></div><div class="flex justify-between items-center text-[11px] text-stone-400 mt-1"><div><span>使用: ¥${item.current.toLocaleString()}</span><span class="mx-1">/</span><span>予算: ¥${item.budget.toLocaleString()}</span></div><div class="bg-stone-100 p-0.5 rounded text-stone-500"><svg id="icon-${index}" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></div></div></div><div id="details-${index}" class="hidden bg-stone-50 border-t border-stone-100 p-3 max-h-60 overflow-y-auto"></div></div>`;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function toggleDetails(index, categoryName) { /* 現在のコードのまま */ 
+      const detailsDiv = document.getElementById(`details-${index}`);
+      const icon = document.getElementById(`icon-${index}`);
+      if (!detailsDiv.classList.contains('hidden')) { detailsDiv.classList.add('hidden'); icon.classList.remove('rotate-180'); return; }
+      detailsDiv.classList.remove('hidden'); icon.classList.add('rotate-180');
+      const filtered = globalTimeline.filter(t => t.item === categoryName || categoryName.includes(t.item));
+      if (filtered.length === 0) { detailsDiv.innerHTML = '<p class="text-center text-stone-400 text-xs py-3">この項目の明細はありません</p>'; } else {
+        let detailHtml = '<div class="space-y-2">';
+        filtered.forEach(t => {
+          let memoText = t.memo ? `<span class="text-stone-500 text-[14px] truncate max-w-[100px] inline-block align-bottom ml-1">${t.memo}</span>` : '';
+          detailHtml += `<div class="flex justify-between items-center bg-white p-2.5 rounded-lg border border-stone-100 shadow-sm"><div class="flex-1 overflow-hidden pr-2"><p class="text-xs font-bold text-stone-700 whitespace-nowrap overflow-hidden text-ellipsis">${t.date} <span class="font-normal text-stone-500 ml-1 text-[10px]">${t.category || ''}</span></p><p class="text-[14px] text-stone-500 mt-0.5 truncate">${memoText}</p></div><p class="text-sm font-bold text-stone-800 shrink-0">-¥${t.amount.toLocaleString()}</p></div>`;
+        });
+        detailHtml += '</div>'; detailsDiv.innerHTML = detailHtml;
+      }
+    }
+
+    function initSelect(id, items) { /* 現在のコードのまま */ 
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">選択してください</option>';
+      items.forEach(item => { select.innerHTML += `<option value="${item}">${item}</option>`; });
+    }
+
+    function updateIncompleteForms(data) { /* 現在のコードのまま */ 
+      const container = document.getElementById('incomplete-container');
+      const badge = document.getElementById('badge-incomplete');
+      badge.innerText = data ? data.length : 0;
+      if (!data || data.length === 0) { container.innerHTML = '<div class="text-center py-6"><p class="text-2xl mb-2">✨</p><p class="text-stone-400 text-sm font-medium">全て確認済みです</p></div>'; return; }
+      let optionsHtml = '<option value="">項目を選択</option>';
+      if (globalItems) { globalItems.forEach(opt => optionsHtml += `<option value="${opt}">${opt}</option>`); }
+      let html = '';
+      data.forEach(item => {
+        html += `<div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm relative" id="inc-form-${item.rowNum}"><div class="flex justify-between items-start mb-3"><div><span class="text-xs font-bold text-red-400 block mb-0.5">自動記録データ</span><span class="text-sm font-bold text-stone-700">${item.date}</span></div><span class="font-bold text-red-600 text-xl tracking-tight">¥ ${item.amount.toLocaleString()}</span></div><div class="space-y-3 mb-4"><select id="inc-item-${item.rowNum}" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400" required>${optionsHtml}</select><input type="text" id="inc-memo-${item.rowNum}" placeholder="メモ (任意)" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400"></div><button onclick="submitIncomplete(${item.rowNum})" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 text-sm">TRUEにして保存</button></div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function showError(error) { alert("通信エラー:\n" + (error.message || error)); }
+
+    // ★ 自動記録送信処理の書き換え
+    async function submitIncomplete(rowNum) {
+      const item = document.getElementById(`inc-item-${rowNum}`).value;
+      const memo = document.getElementById(`inc-memo-${rowNum}`).value;
+      if (!item) return alert("項目を選択してください");
+
+      const btn = document.querySelector(`#inc-form-${rowNum} button`);
+      btn.innerText = '送信中...';
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+
+      try {
+        await fetchAPI('updateIncompleteRecord', { rowNum, item, memo });
+        await loadAllData(); // 成功したら画面をリロード
+      } catch (error) {
+        showError(error);
+        btn.innerText = 'TRUEにして保存';
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
+    }
+
+    // ★ 手入力送信処理の書き換え
+    async function submitManual(e) {
+      e.preventDefault();
+      const date = document.getElementById('input-date').value;
+      const amount = document.getElementById('input-amount').value;
+      const item = document.getElementById('input-item').value;
+      const app = document.getElementById('input-app').value;
+      const memo = document.getElementById('input-memo').value;
+
+      if (!item) return alert("項目を選択してください");
+
+      const btn = e.target.querySelector('button');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '送信中...';
+      btn.disabled = true;
+
+      try {
+        await fetchAPI('addManualRecord', { date, item, amount, app, memo });
+        alert("登録しました！");
+        e.target.reset();
+        document.getElementById('input-date').valueAsDate = new Date();
+        await loadAllData(); // 成功したら画面をリロード
+      } catch (error) {
+        showError(error);
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
