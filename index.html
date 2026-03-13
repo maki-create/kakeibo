@@ -210,21 +210,18 @@
           </div>
           <div class="p-5">
             <form onsubmit="submitManual(event)" class="space-y-4">
-              <div class="flex gap-2">
-                <div class="w-[55%]">
-                  <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
-                  <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
-                </div>
-                <div class="w-[45%]">
-                  <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
-                  <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
-                </div>
+              <!-- ★修正：日付と金額を完全に縦並びに変更 -->
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
+                <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
+                <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
               </div>
               
-              <!-- ★変更：支払方法を先に選び、それによって項目を変化させる -->
               <div>
                 <label class="block text-xs font-bold text-stone-500 mb-1">支払方法 (自動でカテゴリが変わります)</label>
-                <!-- onchange で項目リストを切り替える関数を呼ぶ -->
                 <select id="input-app" onchange="updateItemOptions()" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
                   <option value="">読込中...</option>
                 </select>
@@ -266,7 +263,6 @@
 
   <!-- Application Logic -->
   <script>
-    // ★変更：グローバルアイテムを配列からオブジェクト（連想配列）に変更
     let globalItems = {}; 
     let globalTimeline = []; 
     let spendChartInstance = null;
@@ -283,11 +279,11 @@
       budgets: [ { name: "食費", budget: 40000, current: 30000 } ],
       timeline: [ { date: "2/23", category: "支出・Paypay", item: "食費", amount: 3450, app: "Paypay", memo: "スーパー" } ],
       incomplete: [ { rowNum: 20, date: "2/23", amount: 1200, app: "支出・Paypay" } ],
-      // ★変更：モックデータも連動プルダウンの形に変更
       items: {
         "支出・現金": ["昼食", "外食費", "娯楽", "医療費", "交通費", "日用品費"],
         "支出・Paypay": ["昼食", "外食費", "娯楽", "医療費", "交通費", "日用品費"],
-        "支出・口座引落": ["三井住友カ", "PayPayカー", "振込", "その他"]
+        "支出・口座引落": ["三井住友カ", "PayPayカー", "振込", "その他"],
+        "支出・カード": ["三井住友カ", "その他"] // テスト用
       }
     };
 
@@ -322,7 +318,7 @@
     // ==========================================
     // API通信用設定
     // ==========================================
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwZd3at6HTXeg1A4_UdO0LHVkn_wRn3IsWU-TO5uIFmCTN3bEZYUrw6enbNk8dlLtakfA/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyhsCzSsQ3TQZNqUO_QRgl8kehj64u2vhuhfAVgf5rzY0Uy7Uw2j8fu7Qm3ZhP0GZYRfA/exec';
 
     async function fetchAPI(action, data = {}) {
       const payload = { action: action, ...data };
@@ -373,7 +369,6 @@
       storeTimelineData(data.timeline);
       updateBudgets(data.budgets);
       
-      // ★変更：取得した項目リスト（オブジェクト）を変数に保存し、支払方法のプルダウンを作成
       globalItems = data.items;
       initAppSelect(globalItems); 
       updateIncompleteForms(data.incomplete);
@@ -439,27 +434,32 @@
       if (filtered.length === 0) { detailsDiv.innerHTML = '<p class="text-center text-stone-400 text-xs py-3">この項目の明細はありません</p>'; } else {
         let detailHtml = '<div class="space-y-2">';
         filtered.forEach(t => {
-          let memoText = t.memo ? `<span class="text-stone-500 text-[14px] truncate max-w-[100px] inline-block align-bottom ml-1">${t.memo}</span>` : '';
-          detailHtml += `<div class="flex justify-between items-center bg-white p-2.5 rounded-lg border border-stone-100 shadow-sm"><div class="flex-1 overflow-hidden pr-2"><p class="text-xs font-bold text-stone-700 whitespace-nowrap overflow-hidden text-ellipsis">${t.date} <span class="font-normal text-stone-500 ml-1 text-[10px]">${t.category || ''}</span></p><p class="text-[14px] text-stone-500 mt-0.5 truncate">${memoText}</p></div><p class="text-sm font-bold text-stone-800 shrink-0">-¥${t.amount.toLocaleString()}</p></div>`;
+          let memoText = t.memo ? `<span class="text-stone-500 text-[10px] truncate max-w-[100px] inline-block align-bottom ml-1">(${t.memo})</span>` : '';
+          // ★修正：明細の「支出・」などの文字を隠す
+          let displayCategory = (t.category || '').replace(/^(支出・|収入・)/, '');
+          detailHtml += `<div class="flex justify-between items-center bg-white p-2.5 rounded-lg border border-stone-100 shadow-sm"><div class="flex-1 overflow-hidden pr-2"><p class="text-xs font-bold text-stone-700 whitespace-nowrap overflow-hidden text-ellipsis">${t.date} <span class="font-normal text-stone-500 ml-1 text-[10px]">${displayCategory}</span></p><p class="text-[10px] text-stone-500 mt-0.5 truncate">${memoText}</p></div><p class="text-sm font-bold text-stone-800 shrink-0">-¥${t.amount.toLocaleString()}</p></div>`;
         });
         detailHtml += '</div>'; detailsDiv.innerHTML = detailHtml;
       }
     }
 
-    // ★追加：支払方法のプルダウンを作る関数
+    // ★修正：「カード」を除外し、「支出・」などの文字を隠してプルダウンを作る
     function initAppSelect(itemsMap) { 
       const appSelect = document.getElementById('input-app');
       appSelect.innerHTML = '<option value="">選択してください</option>';
       if (itemsMap && typeof itemsMap === 'object') {
         Object.keys(itemsMap).forEach(app => {
-          appSelect.innerHTML += `<option value="${app}">${app}</option>`;
+          // 「カード」が含まれる場合は手入力の選択肢に出さない
+          if (app.includes('カード')) return; 
+          
+          // 表示上だけ「支出・」などを消す（valueは元のまま送る）
+          const displayName = app.replace(/^(支出・|収入・)/, '');
+          appSelect.innerHTML += `<option value="${app}">${displayName}</option>`;
         });
       }
-      // 項目の方は「支払方法を選択してください」にしておく
       document.getElementById('input-item').innerHTML = '<option value="">支払方法を選択してください</option>';
     }
 
-    // ★追加：支払方法が選ばれた時に、項目のプルダウンの中身を切り替える関数
     function updateItemOptions() {
       const appSelect = document.getElementById('input-app');
       const itemSelect = document.getElementById('input-item');
@@ -467,7 +467,6 @@
       
       itemSelect.innerHTML = '<option value="">選択してください</option>';
       
-      // 選択された支払方法に対応する配列を回して、optionを作る
       if (selectedApp && globalItems[selectedApp]) {
         globalItems[selectedApp].forEach(item => {
           itemSelect.innerHTML += `<option value="${item}">${item}</option>`;
@@ -475,7 +474,7 @@
       }
     }
 
-    // ★変更：カード確認画面の項目リストも、その支払方法に応じたものだけを出すように修正
+    // ★修正：自動記録の確認画面でも「支出・」などの文字を隠す
     function updateIncompleteForms(data) { 
       const container = document.getElementById('incomplete-container');
       const badge = document.getElementById('badge-incomplete');
@@ -484,18 +483,19 @@
       
       let html = '';
       data.forEach(item => {
-        // その自動記録データの支払方法(app)に応じた項目の選択肢を作る
         let optionsHtml = '<option value="">項目を選択</option>';
         if (item.app && globalItems[item.app]) {
           globalItems[item.app].forEach(opt => {
             optionsHtml += `<option value="${opt}">${opt}</option>`;
           });
         } else {
-          // 万が一支払方法が見つからない場合は全部出す
           Object.values(globalItems).flat().filter((x, i, self) => self.indexOf(x) === i).forEach(opt => {
             optionsHtml += `<option value="${opt}">${opt}</option>`;
           });
         }
+
+        // 表示上だけ「支出・」などを消す
+        let displayApp = item.app ? item.app.replace(/^(支出・|収入・)/, '') : '不明な支払方法';
 
         html += `
         <div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm relative" id="inc-form-${item.rowNum}">
@@ -508,7 +508,7 @@
           </div>
           <div class="space-y-3 mb-4">
             <div class="text-xs font-bold text-stone-500 bg-stone-100 p-1.5 rounded inline-block mb-1">
-              🏷️ ${item.app || '不明な支払方法'}
+              🏷️ ${displayApp}
             </div>
             <select id="inc-item-${item.rowNum}" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400" required>${optionsHtml}</select>
             <input type="text" id="inc-memo-${item.rowNum}" placeholder="メモ (任意)" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400">
