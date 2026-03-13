@@ -7,7 +7,7 @@
   
   <!-- PWA化のための設定 -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f766e">F
+  <meta name="theme-color" content="#0f766e">
   <link rel="apple-touch-icon" href="26163.png">
   
   <!-- CSS Framework: Tailwind CSS -->
@@ -210,13 +210,15 @@
           </div>
           <div class="p-5">
             <form onsubmit="submitManual(event)" class="space-y-4">
-              <div>
-                <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
-                <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
-              </div>
-              <div>
-                <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
-                <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
+              <div class="flex gap-2">
+                <div class="w-[55%]">
+                  <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
+                  <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="w-[45%]">
+                  <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
+                  <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
               </div>
               
               <div>
@@ -281,8 +283,7 @@
       items: {
         "支出・現金": ["昼食", "外食費", "娯楽", "医療費", "交通費", "日用品費"],
         "支出・Paypay": ["昼食", "外食費", "娯楽", "医療費", "交通費", "日用品費"],
-        "支出・口座引落": ["三井住友カ", "PayPayカー", "振込", "その他"],
-        "支出・カード": ["三井住友カ", "その他"] // テスト用
+        "支出・口座引落": ["三井住友カ", "PayPayカー", "振込", "その他"]
       }
     };
 
@@ -317,7 +318,8 @@
     // ==========================================
     // API通信用設定
     // ==========================================
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwZd3at6HTXeg1A4_UdO0LHVkn_wRn3IsWU-TO5uIFmCTN3bEZYUrw6enbNk8dlLtakfA/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyK2T3rMJonwNVGjy1OnrMsr1maR8uNu6sV5D0C-6l8lDetXKbAqINIwKs485HRNNSpNQ/exec
+      ';
 
     async function fetchAPI(action, data = {}) {
       const payload = { action: action, ...data };
@@ -338,9 +340,6 @@
     }
 
     window.onload = function() {
-      // ★追加：データ構造が変わったため、ブラウザに残っている古いキャッシュを一度削除してリセットします
-      localStorage.removeItem('kakeibo_data_cache');
-      
       document.getElementById('input-date').valueAsDate = new Date();
       loadAllData();
     };
@@ -448,15 +447,11 @@
       const appSelect = document.getElementById('input-app');
       appSelect.innerHTML = '<option value="">選択してください</option>';
       
-      // ★エラー防止：もしGASから古い形式（配列）のデータが送られてきてしまった場合の対応
+      // ★変更：GASから古いデータ（配列）が送られてきた場合はアラートで警告する
       if (Array.isArray(itemsMap)) {
-        const defaultApps = ["支出・現金", "支出・Paypay", "支出・口座引落"];
-        defaultApps.forEach(app => {
-          const displayName = app.replace(/^(支出・|収入・)/, '');
-          appSelect.innerHTML += `<option value="${app}">${displayName}</option>`;
-        });
-        // 項目のリストはとりあえず送られてきた配列を使う
-        globalItems = {"支出・現金": itemsMap, "支出・Paypay": itemsMap, "支出・口座引落": itemsMap};
+        appSelect.innerHTML = '<option value="">⚠️ GASの更新が必要です</option>';
+        alert("【重要】裏側のシステム（GAS）の更新が反映されていません！\n\nコード.gsの「getItemList」関数が最新のコードになっているか確認し、必ず「新しいバージョン」としてデプロイし直してください。");
+        globalItems = {};
       } 
       // 正常な形式（オブジェクト）の場合
       else if (itemsMap && typeof itemsMap === 'object') {
