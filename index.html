@@ -123,14 +123,12 @@
       <!-- PANEL A: SPEND (支出状況) -->
       <div id="panel-spend" class="panel active space-y-6">
         
-        <!-- Detailed Donut Chart Section -->
         <section class="bg-white rounded-2xl p-5 shadow-sm border border-stone-200">
           <div class="flex justify-between items-end mb-3">
             <h2 class="text-stone-800 font-bold">支出の内訳と貯蓄</h2>
           </div>
           <div class="chart-container">
             <canvas id="spendChart"></canvas>
-            <!-- Center Text inside Donut -->
             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
               <span class="text-xs font-bold text-stone-400 mb-0.5">現在の総支出</span>
               <span class="text-3xl font-bold text-stone-800 tracking-tight" id="chart-total-spend">¥---</span>
@@ -139,13 +137,12 @@
           </div>
         </section>
 
-        <!-- Category Budgets Section (Accordion Style) -->
+        <!-- Category Budgets Section -->
         <section>
           <div class="flex justify-between items-end mb-3 px-1">
             <h2 class="text-stone-800 font-bold">項目別 予算消化</h2>
           </div>
           <div id="budget-list">
-            <!-- JSでアコーディオン形式のカードが生成されます -->
             <p class="text-center text-stone-400 text-sm py-4">データを読み込んでいます...</p>
           </div>
         </section>
@@ -154,21 +151,18 @@
       <!-- PANEL B: ASSET (資産状況) -->
       <div id="panel-asset" class="panel space-y-5">
         
-        <!-- Asset Donut Chart Section -->
         <section class="bg-white rounded-2xl p-5 shadow-sm border border-stone-200">
           <div class="flex justify-between items-end mb-4">
             <h2 class="text-stone-800 font-bold">総資産の内訳</h2>
           </div>
           <div class="chart-container mb-2">
             <canvas id="assetChart"></canvas>
-            <!-- Center Text inside Donut -->
             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
               <span class="text-xs font-bold text-stone-400 mb-0.5">現在の総資産</span>
               <span class="text-3xl font-bold text-stone-800 tracking-tight" id="chart-total-asset">¥---</span>
             </div>
           </div>
           
-          <!-- Asset Details List -->
           <div id="asset-list" class="space-y-3 mt-6 border-t border-stone-100 pt-5 px-1">
             <p class="text-center text-stone-400 text-sm py-4">データを読み込んでいます...</p>
           </div>
@@ -182,7 +176,6 @@
          ============================== -->
     <div id="view-add" class="view px-4 pt-4 pb-40 space-y-5">
       
-      <!-- 入力画面のサブタブ -->
       <div class="bg-stone-200/80 p-1 rounded-xl flex gap-1 shadow-inner">
         <button id="subtab-auto" class="subtab active flex-1 py-2 text-sm rounded-lg transition-all" onclick="switchAddPanel('auto')">
           カードの確認
@@ -212,12 +205,11 @@
         <section class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
           <div class="bg-teal-50 p-4 border-b border-teal-100">
             <h2 class="text-teal-800 font-bold flex items-center gap-2">
-              <span class="text-lg">✏️</span> 手入力 (PayPay等)
+              <span class="text-lg">✏️</span> 手入力
             </h2>
           </div>
           <div class="p-5">
             <form onsubmit="submitManual(event)" class="space-y-4">
-              <!-- ★修正：日付と金額の被り防止（幅を55%と45%で分け、余白を調整） -->
               <div class="flex gap-2">
                 <div class="w-[55%]">
                   <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
@@ -229,21 +221,21 @@
                 </div>
               </div>
               
+              <!-- ★変更：支払方法を先に選び、それによって項目を変化させる -->
               <div>
-                <label class="block text-xs font-bold text-stone-500 mb-1">項目</label>
-                <select id="input-item" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                <label class="block text-xs font-bold text-stone-500 mb-1">支払方法 (自動でカテゴリが変わります)</label>
+                <!-- onchange で項目リストを切り替える関数を呼ぶ -->
+                <select id="input-app" onchange="updateItemOptions()" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
                   <option value="">読込中...</option>
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-bold text-stone-500 mb-1">支払方法</label>
-                <select id="input-app" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
-                  <option value="支出・Paypayクレジット">Paypayクレジット</option>
-                  <option value="支出・現金">現金</option>
-                  <option value="支出・デビット">デビット</option>
-                  <option value="支出・Paypay">Paypay</option>
+                <label class="block text-xs font-bold text-stone-500 mb-1">項目</label>
+                <select id="input-item" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                  <option value="">支払方法を選択してください</option>
                 </select>
               </div>
+
               <div>
                 <label class="block text-xs font-bold text-stone-500 mb-1">メモ (任意)</label>
                 <input type="text" id="input-memo" placeholder="詳細を入力..." class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
@@ -274,32 +266,41 @@
 
   <!-- Application Logic -->
   <script>
-    let globalItems = [];
+    // ★変更：グローバルアイテムを配列からオブジェクト（連想配列）に変更
+    let globalItems = {}; 
     let globalTimeline = []; 
     let spendChartInstance = null;
     let assetChartInstance = null;
 
-    // --- Color Palettes ---
-    const SPEND_COLORS = [
-      '#f87171', '#fb923c', '#fbbf24', '#facc15', '#a3e635', 
-      '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#94a3b8'
-    ];
+    const SPEND_COLORS = ['#f87171', '#fb923c', '#fbbf24', '#facc15', '#a3e635', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#94a3b8'];
     const SAVINGS_COLOR = '#3b82f6';
     const ASSET_COLORS = ['#0f766e', '#059669', '#2563eb', '#7c3aed'];
 
-    // --- Tab & Panel Switching ---
+    // --- MOCK DATA FOR PREVIEW ---
+    const MOCK_DATA = {
+      spendBreakdown: { totalSpend: 135000, savings: 65000, items: [ { name: "食費", amount: 12000 }, { name: "外食費", amount: 18000 } ] },
+      assets: { totalAsset: 3800000, items: [ { name: "三井住友銀行", amount: 1500000 }, { name: "積立ＮＩＳＡ", amount: 1200000 } ] },
+      budgets: [ { name: "食費", budget: 40000, current: 30000 } ],
+      timeline: [ { date: "2/23", category: "支出・Paypay", item: "食費", amount: 3450, app: "Paypay", memo: "スーパー" } ],
+      incomplete: [ { rowNum: 20, date: "2/23", amount: 1200, app: "支出・Paypay" } ],
+      // ★変更：モックデータも連動プルダウンの形に変更
+      items: {
+        "支出・現金": ["昼食", "外食費", "娯楽", "医療費", "交通費", "日用品費"],
+        "支出・Paypay": ["昼食", "外食費", "娯楽", "医療費", "交通費", "日用品費"],
+        "支出・口座引落": ["三井住友カ", "PayPayカー", "振込", "その他"]
+      }
+    };
+
     function switchTab(tabName) {
       document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.remove('active', 'tab-active', 'text-teal-700');
         btn.classList.add('text-stone-400');
       });
-
       document.getElementById('view-' + tabName).classList.add('active');
       const activeBtn = document.getElementById('tab-' + tabName);
       activeBtn.classList.remove('text-stone-400');
       activeBtn.classList.add('active', 'text-teal-700');
-
       const titles = { 'home': 'ホーム', 'add': '支出の入力' };
       document.getElementById('header-title').innerText = titles[tabName];
     }
@@ -321,10 +322,8 @@
     // ==========================================
     // API通信用設定
     // ==========================================
-    // ★重要: ここにご自身のGAS WebアプリのURLを入れてください
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzRS0GFbPRyntmf6NacIIztN02ALnQ08kX_VCkQqw1hYrT-hBPQNdaL47LfjNcVszwQ4Q/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwZd3at6HTXeg1A4_UdO0LHVkn_wRn3IsWU-TO5uIFmCTN3bEZYUrw6enbNk8dlLtakfA/exec';
 
-    // 共通のAPI呼び出し関数
     async function fetchAPI(action, data = {}) {
       const payload = { action: action, ...data };
       try {
@@ -334,55 +333,39 @@
           redirect: 'follow',
           body: JSON.stringify(payload)
         });
-        
         const result = await response.json();
-        
-        if (result.status === "error") {
-          throw new Error(result.message);
-        }
-        
-        // ★修正：result の中身（包み紙）ではなく、実データの result.data を返す！
-        // これにより forEach エラーが直ります。
+        if (result.status === "error") throw new Error(result.message);
         return result.data; 
-        
       } catch (error) {
         console.error("通信エラー:", error);
         throw new Error("通信に失敗しました。ネットワークを確認してください。");
       }
     }
 
-    // --- Initialization ---
     window.onload = function() {
       document.getElementById('input-date').valueAsDate = new Date();
       loadAllData();
     };
 
-    // ★データを一括で読み込む
     async function loadAllData() {
       const cachedData = localStorage.getItem('kakeibo_data_cache');
       if (cachedData) {
-        try {
-          renderData(JSON.parse(cachedData));
-        } catch (e) { console.error('Cache parsing error', e); }
+        try { renderData(JSON.parse(cachedData)); } catch (e) { console.error('Cache error', e); }
       }
-
       const syncIndicator = document.getElementById('sync-indicator');
       syncIndicator.classList.remove('hidden');
 
       try {
         const data = await fetchAPI('getAllData');
-        renderData(data); // エラーが直ったので正しく描画されます
+        renderData(data); 
         localStorage.setItem('kakeibo_data_cache', JSON.stringify(data));
       } catch (error) {
-        if (!cachedData) {
-          showError(error);
-        }
+        if (!cachedData) showError(error);
       } finally {
         syncIndicator.classList.add('hidden');
       }
     }
 
-    // 画面の描画処理をまとめた関数
     function renderData(data) {
       if(!data) return;
       updateSpendChartUI(data.spend);
@@ -390,12 +373,12 @@
       storeTimelineData(data.timeline);
       updateBudgets(data.budgets);
       
+      // ★変更：取得した項目リスト（オブジェクト）を変数に保存し、支払方法のプルダウンを作成
       globalItems = data.items;
-      initSelect('input-item', data.items);
+      initAppSelect(globalItems); 
       updateIncompleteForms(data.incomplete);
     }
 
-    // --- UI Update Functions
     function updateSpendChartUI(data) { 
       if(!data) return;
       document.getElementById('chart-total-spend').innerText = '¥ ' + data.totalSpend.toLocaleString();
@@ -406,8 +389,7 @@
       if (spendChartInstance) spendChartInstance.destroy();
       const ctx = document.getElementById('spendChart').getContext('2d');
       spendChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels: labels, datasets: [{ data: amounts, backgroundColor: colors, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }] },
+        type: 'doughnut', data: { labels: labels, datasets: [{ data: amounts, backgroundColor: colors, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }] },
         options: { cutout: '72%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ' ' + context.label + ': ¥' + context.raw.toLocaleString(); } } } } }
       });
     }
@@ -420,8 +402,7 @@
       if (assetChartInstance) assetChartInstance.destroy();
       const ctx = document.getElementById('assetChart').getContext('2d');
       assetChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels: labels, datasets: [{ data: amounts, backgroundColor: ASSET_COLORS, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }] },
+        type: 'doughnut', data: { labels: labels, datasets: [{ data: amounts, backgroundColor: ASSET_COLORS, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }] },
         options: { cutout: '72%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return ' ' + context.label + ': ¥' + context.raw.toLocaleString(); } } } } }
       });
       let html = '';
@@ -465,30 +446,81 @@
       }
     }
 
-    function initSelect(id, items) { 
-      const select = document.getElementById(id);
-      if(!items || items.length === 0) return;
-      select.innerHTML = '<option value="">選択してください</option>';
-      items.forEach(item => { select.innerHTML += `<option value="${item}">${item}</option>`; });
+    // ★追加：支払方法のプルダウンを作る関数
+    function initAppSelect(itemsMap) { 
+      const appSelect = document.getElementById('input-app');
+      appSelect.innerHTML = '<option value="">選択してください</option>';
+      if (itemsMap && typeof itemsMap === 'object') {
+        Object.keys(itemsMap).forEach(app => {
+          appSelect.innerHTML += `<option value="${app}">${app}</option>`;
+        });
+      }
+      // 項目の方は「支払方法を選択してください」にしておく
+      document.getElementById('input-item').innerHTML = '<option value="">支払方法を選択してください</option>';
     }
 
+    // ★追加：支払方法が選ばれた時に、項目のプルダウンの中身を切り替える関数
+    function updateItemOptions() {
+      const appSelect = document.getElementById('input-app');
+      const itemSelect = document.getElementById('input-item');
+      const selectedApp = appSelect.value;
+      
+      itemSelect.innerHTML = '<option value="">選択してください</option>';
+      
+      // 選択された支払方法に対応する配列を回して、optionを作る
+      if (selectedApp && globalItems[selectedApp]) {
+        globalItems[selectedApp].forEach(item => {
+          itemSelect.innerHTML += `<option value="${item}">${item}</option>`;
+        });
+      }
+    }
+
+    // ★変更：カード確認画面の項目リストも、その支払方法に応じたものだけを出すように修正
     function updateIncompleteForms(data) { 
       const container = document.getElementById('incomplete-container');
       const badge = document.getElementById('badge-incomplete');
       badge.innerText = data ? data.length : 0;
       if (!data || data.length === 0) { container.innerHTML = '<div class="text-center py-6"><p class="text-2xl mb-2">✨</p><p class="text-stone-400 text-sm font-medium">全て確認済みです</p></div>'; return; }
-      let optionsHtml = '<option value="">項目を選択</option>';
-      if (globalItems) { globalItems.forEach(opt => optionsHtml += `<option value="${opt}">${opt}</option>`); }
+      
       let html = '';
       data.forEach(item => {
-        html += `<div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm relative" id="inc-form-${item.rowNum}"><div class="flex justify-between items-start mb-3"><div><span class="text-xs font-bold text-red-400 block mb-0.5">自動記録データ</span><span class="text-sm font-bold text-stone-700">${item.date}</span></div><span class="font-bold text-red-600 text-xl tracking-tight">¥ ${item.amount.toLocaleString()}</span></div><div class="space-y-3 mb-4"><select id="inc-item-${item.rowNum}" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400" required>${optionsHtml}</select><input type="text" id="inc-memo-${item.rowNum}" placeholder="メモ (任意)" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400"></div><button onclick="submitIncomplete(${item.rowNum})" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 text-sm">TRUEにして保存</button></div>`;
+        // その自動記録データの支払方法(app)に応じた項目の選択肢を作る
+        let optionsHtml = '<option value="">項目を選択</option>';
+        if (item.app && globalItems[item.app]) {
+          globalItems[item.app].forEach(opt => {
+            optionsHtml += `<option value="${opt}">${opt}</option>`;
+          });
+        } else {
+          // 万が一支払方法が見つからない場合は全部出す
+          Object.values(globalItems).flat().filter((x, i, self) => self.indexOf(x) === i).forEach(opt => {
+            optionsHtml += `<option value="${opt}">${opt}</option>`;
+          });
+        }
+
+        html += `
+        <div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm relative" id="inc-form-${item.rowNum}">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <span class="text-xs font-bold text-red-400 block mb-0.5">自動記録データ</span>
+              <span class="text-sm font-bold text-stone-700">${item.date}</span>
+            </div>
+            <span class="font-bold text-red-600 text-xl tracking-tight">¥ ${item.amount.toLocaleString()}</span>
+          </div>
+          <div class="space-y-3 mb-4">
+            <div class="text-xs font-bold text-stone-500 bg-stone-100 p-1.5 rounded inline-block mb-1">
+              🏷️ ${item.app || '不明な支払方法'}
+            </div>
+            <select id="inc-item-${item.rowNum}" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400" required>${optionsHtml}</select>
+            <input type="text" id="inc-memo-${item.rowNum}" placeholder="メモ (任意)" class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm outline-none focus:border-red-400">
+          </div>
+          <button onclick="submitIncomplete(${item.rowNum})" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 text-sm">TRUEにして保存</button>
+        </div>`;
       });
       container.innerHTML = html;
     }
 
-    function showError(error) { alert("通信エラー:\n" + (error.message || error)); }
+    function showError(error) { alert("エラー:\n" + (error.message || error)); }
 
-    // ★ 自動記録送信処理
     async function submitIncomplete(rowNum) {
       const item = document.getElementById(`inc-item-${rowNum}`).value;
       const memo = document.getElementById(`inc-memo-${rowNum}`).value;
@@ -501,7 +533,7 @@
 
       try {
         await fetchAPI('updateIncompleteRecord', { rowNum, item, memo });
-        await loadAllData(); // 成功したら画面をリロード
+        await loadAllData(); 
       } catch (error) {
         showError(error);
         btn.innerText = 'TRUEにして保存';
@@ -510,7 +542,6 @@
       }
     }
 
-    // ★ 手入力送信処理
     async function submitManual(e) {
       e.preventDefault();
       const date = document.getElementById('input-date').value;
@@ -519,7 +550,7 @@
       const app = document.getElementById('input-app').value;
       const memo = document.getElementById('input-memo').value;
 
-      if (!item) return alert("項目を選択してください");
+      if (!item || !app) return alert("支払方法と項目を選択してください");
 
       const btn = e.target.querySelector('button');
       const originalText = btn.innerHTML;
@@ -531,28 +562,14 @@
         alert("登録しました！");
         e.target.reset();
         document.getElementById('input-date').valueAsDate = new Date();
-        await loadAllData(); // 成功したら画面をリロード
+        document.getElementById('input-item').innerHTML = '<option value="">支払方法を選択してください</option>'; // 項目プルダウンもリセット
+        await loadAllData(); 
       } catch (error) {
         showError(error);
       } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
       }
-    }
-    
-    // ==========================================
-    // PWA Service Worker の登録
-    // ==========================================
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((registration) => {
-            console.log('ServiceWorker 登録成功:', registration.scope);
-          })
-          .catch((error) => {
-            console.log('ServiceWorker 登録失敗:', error);
-          });
-      });
     }
   </script>
 </body>
