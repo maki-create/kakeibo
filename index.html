@@ -210,7 +210,6 @@
           </div>
           <div class="p-5">
             <form onsubmit="submitManual(event)" class="space-y-4">
-              <!-- ★修正：日付と金額を完全に縦並びに変更 -->
               <div>
                 <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
                 <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
@@ -339,6 +338,9 @@
     }
 
     window.onload = function() {
+      // ★追加：データ構造が変わったため、ブラウザに残っている古いキャッシュを一度削除してリセットします
+      localStorage.removeItem('kakeibo_data_cache');
+      
       document.getElementById('input-date').valueAsDate = new Date();
       loadAllData();
     };
@@ -435,7 +437,6 @@
         let detailHtml = '<div class="space-y-2">';
         filtered.forEach(t => {
           let memoText = t.memo ? `<span class="text-stone-500 text-[10px] truncate max-w-[100px] inline-block align-bottom ml-1">(${t.memo})</span>` : '';
-          // ★修正：明細の「支出・」などの文字を隠す
           let displayCategory = (t.category || '').replace(/^(支出・|収入・)/, '');
           detailHtml += `<div class="flex justify-between items-center bg-white p-2.5 rounded-lg border border-stone-100 shadow-sm"><div class="flex-1 overflow-hidden pr-2"><p class="text-xs font-bold text-stone-700 whitespace-nowrap overflow-hidden text-ellipsis">${t.date} <span class="font-normal text-stone-500 ml-1 text-[10px]">${displayCategory}</span></p><p class="text-[10px] text-stone-500 mt-0.5 truncate">${memoText}</p></div><p class="text-sm font-bold text-stone-800 shrink-0">-¥${t.amount.toLocaleString()}</p></div>`;
         });
@@ -443,16 +444,24 @@
       }
     }
 
-    // ★修正：「カード」を除外し、「支出・」などの文字を隠してプルダウンを作る
     function initAppSelect(itemsMap) { 
       const appSelect = document.getElementById('input-app');
       appSelect.innerHTML = '<option value="">選択してください</option>';
-      if (itemsMap && typeof itemsMap === 'object') {
+      
+      // ★エラー防止：もしGASから古い形式（配列）のデータが送られてきてしまった場合の対応
+      if (Array.isArray(itemsMap)) {
+        const defaultApps = ["支出・現金", "支出・Paypay", "支出・口座引落"];
+        defaultApps.forEach(app => {
+          const displayName = app.replace(/^(支出・|収入・)/, '');
+          appSelect.innerHTML += `<option value="${app}">${displayName}</option>`;
+        });
+        // 項目のリストはとりあえず送られてきた配列を使う
+        globalItems = {"支出・現金": itemsMap, "支出・Paypay": itemsMap, "支出・口座引落": itemsMap};
+      } 
+      // 正常な形式（オブジェクト）の場合
+      else if (itemsMap && typeof itemsMap === 'object') {
         Object.keys(itemsMap).forEach(app => {
-          // 「カード」が含まれる場合は手入力の選択肢に出さない
           if (app.includes('カード')) return; 
-          
-          // 表示上だけ「支出・」などを消す（valueは元のまま送る）
           const displayName = app.replace(/^(支出・|収入・)/, '');
           appSelect.innerHTML += `<option value="${app}">${displayName}</option>`;
         });
@@ -474,7 +483,6 @@
       }
     }
 
-    // ★修正：自動記録の確認画面でも「支出・」などの文字を隠す
     function updateIncompleteForms(data) { 
       const container = document.getElementById('incomplete-container');
       const badge = document.getElementById('badge-incomplete');
@@ -494,7 +502,6 @@
           });
         }
 
-        // 表示上だけ「支出・」などを消す
         let displayApp = item.app ? item.app.replace(/^(支出・|収入・)/, '') : '不明な支払方法';
 
         html += `
