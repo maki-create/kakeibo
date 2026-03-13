@@ -8,7 +8,7 @@
   <!-- PWA化のための設定 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f766e">
-  <link rel="apple-touch-icon" href="お茶碗と箸.png">
+  <link rel="apple-touch-icon" href="26163.png">
   
   <!-- CSS Framework: Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -217,14 +217,18 @@
           </div>
           <div class="p-5">
             <form onsubmit="submitManual(event)" class="space-y-4">
-              <div>
-                <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
-                <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+              <!-- ★修正：日付と金額の被り防止（幅を55%と45%で分け、余白を調整） -->
+              <div class="flex gap-2">
+                <div class="w-[55%]">
+                  <label class="block text-xs font-bold text-stone-500 mb-1">日付</label>
+                  <input type="date" id="input-date" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="w-[45%]">
+                  <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
+                  <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
               </div>
-              <div>
-                <label class="block text-xs font-bold text-stone-500 mb-1">金額</label>
-                <input type="number" id="input-amount" placeholder="¥" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none">
-              </div>
+              
               <div>
                 <label class="block text-xs font-bold text-stone-500 mb-1">項目</label>
                 <select id="input-item" required class="w-full bg-stone-50 border border-stone-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
@@ -314,52 +318,47 @@
       document.getElementById('subtab-' + panelName).classList.add('active');
     }
 
-    // --- Initialization ---
     // ==========================================
     // API通信用設定
     // ==========================================
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyhsCzSsQ3TQZNqUO_QRgl8kehj64u2vhuhfAVgf5rzY0Uy7Uw2j8fu7Qm3ZhP0GZYRfA/exec';
+    // ★重要: ここにご自身のGAS WebアプリのURLを入れてください
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzRS0GFbPRyntmf6NacIIztN02ALnQ08kX_VCkQqw1hYrT-hBPQNdaL47LfjNcVszwQ4Q/exec';
 
     // 共通のAPI呼び出し関数
     async function fetchAPI(action, data = {}) {
-  // ★重要: ここにご自身のGAS WebアプリのURLを入れてください
-  const url = 'https://script.google.com/macros/s/AKfycbyhsCzSsQ3TQZNqUO_QRgl8kehj64u2vhuhfAVgf5rzY0Uy7Uw2j8fu7Qm3ZhP0GZYRfA/exec'; 
-      
-
-  const payload = { action: action, ...data };
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      // ★重要: これが application/json だとCORSエラーになります。text/plain にしてください
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      // ★重要: GAS特有のリダイレクトに追従するために必要です
-      redirect: 'follow',
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    if (result.status === "error") {
-      throw new Error(result.message);
+      const payload = { action: action, ...data };
+      try {
+        const response = await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          redirect: 'follow',
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === "error") {
+          throw new Error(result.message);
+        }
+        
+        // ★修正：result の中身（包み紙）ではなく、実データの result.data を返す！
+        // これにより forEach エラーが直ります。
+        return result.data; 
+        
+      } catch (error) {
+        console.error("通信エラー:", error);
+        throw new Error("通信に失敗しました。ネットワークを確認してください。");
+      }
     }
-    return result;
-  } catch (error) {
-    console.error("通信エラー:", error);
-    throw new Error("通信に失敗しました。ネットワークを確認してください。");
-  }
-}
 
-
+    // --- Initialization ---
     window.onload = function() {
       document.getElementById('input-date').valueAsDate = new Date();
       loadAllData();
     };
 
-    // ★データを一括で読み込む（キャッシュ活用で爆速化）
+    // ★データを一括で読み込む
     async function loadAllData() {
-      // 1. ローカルストレージ（スマホ本体）から前回のデータを取得して即座に表示
       const cachedData = localStorage.getItem('kakeibo_data_cache');
       if (cachedData) {
         try {
@@ -367,31 +366,25 @@
         } catch (e) { console.error('Cache parsing error', e); }
       }
 
-      // ヘッダーに同期中くるくるスピナーを表示
       const syncIndicator = document.getElementById('sync-indicator');
       syncIndicator.classList.remove('hidden');
 
-      // 2. 裏側でGASに最新データを取りに行く
       try {
         const data = await fetchAPI('getAllData');
-        
-        // 3. 取得した最新データで画面を上書きし、次回のためにスマホに保存（キャッシュ更新）
-        renderData(data);
+        renderData(data); // エラーが直ったので正しく描画されます
         localStorage.setItem('kakeibo_data_cache', JSON.stringify(data));
-        
       } catch (error) {
         if (!cachedData) {
-          // キャッシュすらない初回起動時のみ、エラーメッセージを出す
           showError(error);
         }
       } finally {
-        // 同期完了したらスピナーを隠す
         syncIndicator.classList.add('hidden');
       }
     }
 
     // 画面の描画処理をまとめた関数
     function renderData(data) {
+      if(!data) return;
       updateSpendChartUI(data.spend);
       updateAssetChartUI(data.asset);
       storeTimelineData(data.timeline);
@@ -474,6 +467,7 @@
 
     function initSelect(id, items) { 
       const select = document.getElementById(id);
+      if(!items || items.length === 0) return;
       select.innerHTML = '<option value="">選択してください</option>';
       items.forEach(item => { select.innerHTML += `<option value="${item}">${item}</option>`; });
     }
