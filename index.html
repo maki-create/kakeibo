@@ -321,21 +321,36 @@
     const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzxagaFu-j_LQBYqvoMxoKPDYeGtWTAnn4yyHcmTv7p3hOcRxtB6WCALP8dFlzEzNrM/exec';
 
     // 共通のAPI呼び出し関数
-    async function fetchAPI(action, payload = {}) {
-      const res = await fetch(GAS_WEB_APP_URL, {
-        method: 'POST',
-        redirect: 'follow', // GASの仕様上必須
-        headers: {
-          'Content-Type': 'text/plain', // CORSエラー回避のおまじない
-        },
-        body: JSON.stringify({ action: action, ...payload })
-      });
-      const json = await res.json();
-      if (json.status === 'error') throw new Error(json.message);
-      return json.data;
-    }
+    async function fetchAPI(action, data = {}) {
+  // ★重要: ここにご自身のGAS WebアプリのURLを入れてください
+  const url = 'https://script.google.com/macros/s/あなたのID/exec'; 
 
-    // --- Initialization ---
+  const payload = { action: action, ...data };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      // ★重要: これが application/json だとCORSエラーになります。text/plain にしてください
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      // ★重要: GAS特有のリダイレクトに追従するために必要です
+      redirect: 'follow',
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    if (result.status === "error") {
+      throw new Error(result.message);
+    }
+    return result;
+  } catch (error) {
+    console.error("通信エラー:", error);
+    throw new Error("通信に失敗しました。ネットワークを確認してください。");
+  }
+}
+
+
     window.onload = function() {
       document.getElementById('input-date').valueAsDate = new Date();
       loadAllData();
